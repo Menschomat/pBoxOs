@@ -40,3 +40,17 @@ void sendMsg(String topic, String msg)
     mqttClient.endMessage();
     Serial.println("------------------------------------");
 }
+void sendMsgHeartbeat()
+{
+    sendMsg(root_topic + BOX_ID + "/health", "alive");
+}
+
+void connectionCheck(){
+    if (!mqttClient.connected()) {
+    Serial.println("MQTT connection lost");
+    if (!mqttClient.connect(broker, port)) {
+      Serial.print("MQTT reconnection error ");
+      Serial.println(mqttClient.connectError());
+    }
+  }
+}
