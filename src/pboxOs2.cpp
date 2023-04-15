@@ -1,14 +1,12 @@
 
 #include <Arduino.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <SPI.h>
 #include <Ethernet.h>
 #include <ArduinoMqttClient.h>
 #include <utils/temp.h>
 #include <utils/light.h>
 #include <utils/fan.h>
-#include <Regexp.h>
 #include <avr/dtostrf.h>
 // Initialize the Ethernet client library
 // with the IP address and port of the server

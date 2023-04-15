@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
-#include <stdio.h>
 #include <utils/mqtt.h>
+#include <stdio.h>
 
 char light_topic[120];
 int light_level = 0;

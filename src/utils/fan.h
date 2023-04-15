@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
-#include <stdio.h>
 #include <utils/mqtt.h>
+#include <stdio.h>
 
 char fan_topic[120];
 int fan_level = 0;
