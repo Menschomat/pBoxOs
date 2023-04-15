@@ -1,4 +1,3 @@
-
 #include <Arduino.h>
 #include <stdlib.h>
 #include <SPI.h>
@@ -8,20 +7,18 @@
 #include <utils/light.h>
 #include <utils/fan.h>
 #include <avr/dtostrf.h>
-// Initialize the Ethernet client library
-// with the IP address and port of the server
-// that you want to connect to (port 80 is default for HTTP):
 
-// set interval for sending messages (milliseconds)
-const long heart_interval = 4000;
-const long interval = 8000;
-unsigned long previousMillis = 0;
-unsigned long heart_previousMillis = 0;
+// Define pin numbers and other constants
+const int LED_PIN = LED_BUILTIN;
+const int LIGHT_PIN = 13;
+const int FAN_PIN = 12;
+const long HEART_INTERVAL_MS = 4000;
+const long SENSOR_INTERVAL_MS = 8000;
 
-int count = 0;
+// Declare global variables
+EthernetClient ethClient;
 
-int fanLevel = 0;
-
+// Helper function to convert a string to an integer
 int str_to_int(const char *str, int fallback)
 {
   char *endptr;
@@ -33,16 +30,10 @@ int str_to_int(const char *str, int fallback)
   }
   return result;
 }
+
+// Callback function for incoming MQTT messages
 void onMqttMessage(int messageSize)
 {
-  // we received a message, print out the topic and contents
-  Serial.println("Received a message with topic '");
-  Serial.print(mqttClient.messageTopic());
-  Serial.print("', length ");
-  Serial.print(messageSize);
-  Serial.println(" bytes:");
-
-  // use the Stream interface to print the contents
   char msg[messageSize + 1]; // add one for the null terminator
   int index = 0;
   while (mqttClient.available())
@@ -53,58 +44,74 @@ void onMqttMessage(int messageSize)
 
   if (mqttClient.messageTopic() == fan_topic)
   {
-    fanLevel = str_to_int(msg, fan_level);
+    fan_level = str_to_int(msg, fan_level);
   }
   else if (mqttClient.messageTopic() == light_topic)
   {
     light_level = str_to_int(msg, light_level);
   }
+
+  Serial.println("Received message: ");
+  Serial.print("  topic: ");
+  Serial.println(mqttClient.messageTopic());
+  Serial.print("  content: ");
   Serial.println(msg);
   Serial.println();
 }
 
 void setup()
 {
-  // Initialize serial and wait for port to open:
   Serial.begin(9600);
   while (!Serial)
   {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-  pinMode(LED_BUILTIN, OUTPUT);
+
+  // Set pin modes
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(LIGHT_PIN, OUTPUT);
+  pinMode(FAN_PIN, OUTPUT);
+
+  // Initialize Ethernet and MQTT clients
   connectEthernet();
   connectMqtt();
-  initTempSens();
-  init_lights();
-  init_fans();
   mqttClient.onMessage(onMqttMessage);
   mqttClient.subscribe(fan_topic);
   mqttClient.subscribe(light_topic);
+
+  // Initialize sensors and actuators
+  initTempSens();
+  init_lights();
+  init_fans();
 }
 
 void loop()
 {
-  analogWrite(13, light_level);
-  analogWrite(12, fan_level);
-  // call poll() regularly to allow the library to send MQTT keep alive which
-  // avoids being disconnected by the broker
+  // Control the actuators
+  analogWrite(LIGHT_PIN, light_level);
+  analogWrite(FAN_PIN, fan_level);
+
+  // Check for MQTT messages and handle them
+  mqttClient.poll();
+
+  // Send sensor data at regular intervals
   unsigned long currentMillis = millis();
-  if (currentMillis - heart_previousMillis >= heart_interval)
+  static unsigned long lastSensorMillis = 0;
+  if (currentMillis - lastSensorMillis >= SENSOR_INTERVAL_MS)
   {
-    heart_previousMillis = currentMillis;
+    lastSensorMillis = currentMillis;
+
+    char buffer[10];
+    sendMsg(sensors_topic, dtostrf(getTemp(), 5, 2, buffer));
+  }
+
+  // Send heartbeat message at regular intervals
+  static unsigned long lastHeartMillis = 0;
+  if (currentMillis - lastHeartMillis >= HEART_INTERVAL_MS)
+  {
+    lastHeartMillis = currentMillis;
+
     connectionCheck();
     // sendMsgHeartbeat();
   }
-  if (currentMillis - previousMillis >= interval)
-  {
-    // save the last time a message was sent
-    previousMillis = currentMillis;
-    // send message, the Print interface can be used to set the message contents
-    // if (nextTemp != lastTemp)
-    //{
-    char buffer[10];
-    sendMsg(sensors_topic, dtostrf(getTemp(), 5, 2, buffer));
-    //}
-  }
-  mqttClient.poll();
 }
