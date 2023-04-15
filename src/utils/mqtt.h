@@ -8,7 +8,7 @@
 const char broker[] = "10.11.15.21";
 int port = 1883;
 
-String root_topic = "test/";
+const char *root_topic = "test/";
 
 MqttClient mqttClient(eth_client);
 
@@ -29,28 +29,34 @@ void connectMqtt()
     Serial.println("------------------------------------");
 }
 
-void sendMsg(String topic, String msg)
+void sendMsg(const char *topic, const char *msg)
 {
-    String t = topic;
     Serial.print("Sending message to topic: ");
-    Serial.println(t);
+    Serial.println(topic);
     Serial.println(msg);
-    mqttClient.beginMessage(t);
+    mqttClient.beginMessage(topic);
     mqttClient.print(msg);
     mqttClient.endMessage();
     Serial.println("------------------------------------");
 }
 void sendMsgHeartbeat()
 {
-    sendMsg(root_topic + BOX_ID + "/health", "alive");
+    char topic[120];
+    strcpy(topic, root_topic);
+    strcat(topic, BOX_ID);
+    strcat(topic, "/health");
+    sendMsg(topic, "alive");
 }
 
-void connectionCheck(){
-    if (!mqttClient.connected()) {
-    Serial.println("MQTT connection lost");
-    if (!mqttClient.connect(broker, port)) {
-      Serial.print("MQTT reconnection error ");
-      Serial.println(mqttClient.connectError());
+void connectionCheck()
+{
+    if (!mqttClient.connected())
+    {
+        Serial.println("MQTT connection lost");
+        if (!mqttClient.connect(broker, port))
+        {
+            Serial.print("MQTT reconnection error ");
+            Serial.println(mqttClient.connectError());
+        }
     }
-  }
 }
