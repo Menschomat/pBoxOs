@@ -8,7 +8,7 @@
 #define BOX_ID "box_02"
 
 // Set the IP address and port of the MQTT broker
-const char broker[] = "10.11.15.21";
+const char broker[] = "docker-int.infra.menscho.base";
 int port = 1883;
 
 // Set the root topic for the messages

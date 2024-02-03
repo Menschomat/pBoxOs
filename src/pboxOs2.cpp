@@ -30,11 +30,16 @@ int str_to_int(const char *str, int fallback)
   }
   return result;
 }
+int percent_to_level(int percent)
+{
+  return (255 / 100) * percent;
+}
 
 // Callback function for incoming MQTT messages
 void onMqttMessage(int messageSize)
 {
-  char msg[messageSize + 1]; // add one for the null terminator
+  char msg[messageSize + 1];                // add one for the null terminator
+  String topic = mqttClient.messageTopic(); // retrieve topic before reading message data
   int index = 0;
   while (mqttClient.available())
   {
@@ -42,18 +47,22 @@ void onMqttMessage(int messageSize)
   }
   msg[index] = '\0'; // add null terminator to end of message
 
-  if (mqttClient.messageTopic() == fan_topic)
+  if (topic == fan_topic)
   {
-    fan_level = str_to_int(msg, fan_level);
+    int new_level = percent_to_level(str_to_int(msg, fan_level));
+    Serial.println("Setting light to " + new_level);
+    fan_level = new_level;
   }
-  else if (mqttClient.messageTopic() == light_topic)
+  else if (topic == light_topic)
   {
-    light_level = str_to_int(msg, light_level);
+    int new_level = percent_to_level(str_to_int(msg, light_level));
+    Serial.println("Setting light to " + new_level);
+    light_level = new_level;
   }
 
   Serial.println("Received message: ");
   Serial.print("  topic: ");
-  Serial.println(mqttClient.messageTopic());
+  Serial.println(topic);
   Serial.print("  content: ");
   Serial.println(msg);
   Serial.println();
@@ -62,27 +71,31 @@ void onMqttMessage(int messageSize)
 void setup()
 {
   Serial.begin(9600);
-  while (!Serial)
+ /*while (!Serial)
   {
     ; // wait for serial port to connect. Needed for native USB port only
-  }
+  }*/
 
   // Set pin modes
   pinMode(LED_PIN, OUTPUT);
   pinMode(LIGHT_PIN, OUTPUT);
   pinMode(FAN_PIN, OUTPUT);
 
-  // Initialize Ethernet and MQTT clients
-  connectEthernet();
-  connectMqtt();
-  mqttClient.onMessage(onMqttMessage);
-  mqttClient.subscribe(fan_topic);
-  mqttClient.subscribe(light_topic);
-
   // Initialize sensors and actuators
   initTempSens();
   init_lights();
   init_fans();
+
+  // Initialize Ethernet and MQTT clients
+  connectEthernet();
+  connectMqtt();
+  mqttClient.onMessage(onMqttMessage);
+  Serial.print("Subscribe to mqtt-topic ");
+  Serial.println(fan_topic);
+  mqttClient.subscribe(fan_topic);
+  Serial.print("Subscribe to mqtt-topic ");
+  Serial.println(light_topic);
+  mqttClient.subscribe(light_topic);
 }
 
 void loop()
